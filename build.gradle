@@ -1,0 +1,46 @@
+plugins {
+    id "org.jetbrains.kotlin.jvm" version "1.6.10"
+}
+repositories {
+    mavenCentral()
+}
+
+apply plugin: "kotlin"
+
+dependencies {
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.6.10'
+    implementation 'org.jetbrains.kotlin:kotlin-reflect:1.6.0'
+
+    implementation 'org.jetbrains.kotlin:kotlin-test:1.6.0'
+    implementation 'org.jetbrains.kotlin:kotlin-test-junit:1.6.0'
+
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0-native-mt'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.0-native-mt'
+
+    // Callback exercise
+    implementation "com.squareup.retrofit2:retrofit:2.9.0"
+    implementation "com.squareup.retrofit2:converter-jackson:2.9.0"
+    implementation 'com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1'
+}
+
+tasks.withType(JavaCompile) {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+kotlin {
+    sourceSets {
+        main.kotlin.srcDirs += 'src'
+        test.kotlin.srcDirs += 'src'
+    }
+
+    experimental {
+        coroutines "enable"
+    }
+}
+
+compileKotlin {
+    kotlinOptions.freeCompilerArgs += [
+            "-Xuse-experimental=kotlinx.coroutines.ExperimentalCoroutinesApi"
+    ]
+}
