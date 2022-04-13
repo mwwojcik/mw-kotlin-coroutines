@@ -198,7 +198,9 @@ Korutyny zostają wystartowane i czekają 1 sekundę, zatem pierwsze wyświetlon
 "Hello", potem wątek zostaje zablokowany na 2 sekundy, pozwala to wybudzić się korutynom
 i każda z nich wyświetli swoje "World".
 
-##Builder - runBlocking
+
+## Builder - runBlocking
+
 
 Jest to bardzo nietypowy builder, którego użycie jest nieco sprzeczne z ideą korutyn. Mianowicie
 powoduje on zablokowanie wątku zaraz po wystartowaniu korutyny!
@@ -252,7 +254,7 @@ fun `test`() = runBlocking {
 ** UWAGA! - builder ten jest rzadko używany, w testach stosuje się  *runTest* a main jest
 często suspendowalna**
 
-##Builder - async
+## Builder - async
 
 Jest to builder podobny do bildera *launch* , ale stosuje się go w sytuacji gdy produkowana
 jest wartość. Musi ona być zwracana przez lambdę. 
