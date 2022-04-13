@@ -23,4 +23,26 @@ class SequenceGeneratorTest {
         println("Number 3=>${it.next()}")
 
     }
+
+
+    @Test
+    fun shouldReturnPower() = runTest {
+        val seq= sequence<Pair<Int,Int>> {
+            var previousPower=1
+            var elem=1
+
+            while (true){
+                val power=previousPower*elem
+                println("Generate power for item=${elem}")
+                yield(Pair(elem,power))
+                previousPower=power
+                elem++
+            }
+        }
+
+        seq.take(7).forEach {
+            println("Power=>${it}")
+        }
+    }
+
 }

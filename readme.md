@@ -1,7 +1,12 @@
 # Co to jest korutyna ?
 
 Jest to zestaw komponentów które pozwalają na czasowe zawieszenie oraz późniejsze wznowienie
-wykonywania fragmentu kodu.
+wykonywania fragmentu kodu. 
+
+Koncepcyjnie korutyna jest zbliżona do wątku, ponieważ jest to blok kodu, który
+wykonywany jest równolegle z resztą kodu. 
+Główną różnicę stanowi fakt, że nie jest ona częścią żadnego wątku. 
+Może być zatrzymana w jednym wątku a wznowiona w zupełnie innym. 
 
 1. W wątku głównym uruchamiany jest kosztowny kod (np pobieranie danych przez API)
 2. Tworzony jest save point
@@ -10,6 +15,27 @@ wykonywania fragmentu kodu.
 5. Gdy wątek będzie wolny następuje wznowienie go od savepointu
 
 Mechanizm zamieszania polega na zatrzymaniu wykonywania kodu w określonym miejscu.
+
+```kotlin
+ @Test
+    fun test2() = runTest {
+        println("Before")
+        //zawieszenie bieżącego wątku
+        //w lambdzie kod, który ma się wykonać na chwilę
+        //PRZED zawieszeniem
+        suspendCoroutine { cont: Continuation<Unit> ->
+            //powołuję nowy wątek
+            thread {
+                //usypiam go na 1 s
+                Thread.sleep(1000)
+                //wątek się wybudza i wznawia korutynę
+                //UWAGA! odwiesza inny wątek niż zawiesił!
+                cont.resume(Unit)
+            }
+        }
+        println("After")
+    }
+```
 
 # Sequence generator - przykład wykorzystania mechanizmu zawieszania
 
@@ -53,6 +79,47 @@ Generate item
 Number 3=>82
 ```
 
+Generatory sekwencji mogą pamiętać stan, poniżej przykład generujący wartość funkcji silnia
+
+```kotlin
+    @Test
+    fun shouldReturnPower() = runTest {
+        val seq= sequence<Pair<Int,Int>> {
+            var previousPower=1
+            var elem=1
+
+            while (true){
+                val power=previousPower*elem
+                println("Generate power for item=${elem}")
+                yield(Pair(elem,power))
+                previousPower=power
+                elem++
+            }
+        }
+
+        seq.take(7).forEach {
+            println("Power=>${it}")
+        }
+    }
+
+```
+
+```kotlin
+Generate power for item=1
+Power=>(1, 1)
+Generate power for item=2
+Power=>(2, 2)
+Generate power for item=3
+Power=>(3, 6)
+Generate power for item=4
+Power=>(4, 24)
+Generate power for item=5
+Power=>(5, 120)
+Generate power for item=6
+Power=>(6, 720)
+Generate power for item=7
+Power=>(7, 5040)
+```
 # Wsparcie natywne vs biblioteka kotlinx.coroutines
 
 **Wsparcie natywne**
@@ -67,28 +134,156 @@ Number 3=>82
 
 ![](assets/img/nativesupport_vs_kotlin_coroutines.png)
 
-## Przykłady użycia elementów natywnych
+# Coroutine builders
 
-**Zawieszenie bieżącego wątku na 1 sekundę**
+Funkcja suspendowalna może wołać normalną metodę, ale normalna metoda nie może wołać funkcji
+suspendowalnej. 
+
+Metoda suspendowalna może być wołana tylko z innej metody suspendowalnej. 
+
+Jednak jak rozpocząć ten łańcuch wywołań, bo przecież na jego początku jest funkcja zwykła ?
+
+Z pomocą przychodzi biblioteka kotlinx.coroutines, która dostarcza trzech coroutine builders: 
+
+* launch
+* async
+* runBlocking
+
+## Builder - launch
+
+Jest to mechanizm bardzo zbliżony do mechanizmu tworzenia nowego wątku,
+spójrzmy na ten przykład:
 
 ```kotlin
- @Test
-    fun test2() = runTest {
-        println("Before")
-        //zawieszenie bieżącego wątku
-        //w lambdzie kod który ma się wykonać na chwilę
-        //PRZED zawieszeniem
-        suspendCoroutine { cont: Continuation<Unit> ->
-            //powołuję nowy wątek
-            thread {
-                //usypiam go na 1 s
-                Thread.sleep(1000)
-                //wątek się wybudza i wznawia korutynę
-                cont.resume(Unit)
-            }
-        }
-        println("After")
+fun main() {
+    GlobalScope.launch {
+        delay(1000L)
+        println("World!")
     }
+    GlobalScope.launch {
+        delay(1000L)
+        println("World!")
+    }
+    GlobalScope.launch {
+        delay(1000L)
+        println("World!")
+    }
+    println("Hello,")
+    Thread.sleep(2000L)
+}
 ```
 
-## Przykłady użycia elementów bibliotecznych
+Co tu się dzieje ?
+
+Uruchamiana jest funkcja main a następnie niezależnie od siebie trzy korutyny, które
+zawieszają się na 1 s. Efekt ten jest bardzo zbliżony do efektu tworzenia nowego wątku.
+
+Uwaga! jak działa metoda *delay()* ? 
+
+Metoda ta **NIE BLOKUJE WĄTKU** a tylko zawiesza (a potem odwiesza) korutynę! 
+
+Z tego też powodu, by dało się obejrzeć wyniki działania korutyn należy zatrzymać wątek główny
+czyli wykonać *Thread.sleep()* na końcu. 
+
+Wynik działania będzie następujący:
+
+```kotlin
+Hello,
+(DELAY-1s)
+World!
+World!
+World!
+```
+Korutyny zostają wystartowane i czekają 1 sekundę, zatem pierwsze wyświetlone zostanie 
+"Hello", potem wątek zostaje zablokowany na 2 sekundy, pozwala to wybudzić się korutynom
+i każda z nich wyświetli swoje "World".
+
+##Builder - runBlocking
+
+Jest to bardzo nietypowy builder, którego użycie jest nieco sprzeczne z ideą korutyn. Mianowicie
+powoduje on zablokowanie wątku zaraz po wystartowaniu korutyny!
+
+```kotlin
+fun mainRunBlocking() {
+    runBlocking {
+        delay(1000L)
+        println("World!")
+    }
+    runBlocking {
+        delay(1000L)
+        println("World!")
+    }
+    runBlocking {
+        delay(1000L)
+        println("World!")
+    }
+    println("Hello,")
+}
+```
+
+W wyniku wykonania tego kodu po uruchomieniu każdej z korutyn program zatrzyma się na 1 s.
+
+Wynik jego działania będzie następujący:
+
+```kotlin
+(STOP-1s)
+World!
+(STOP-1s)
+World!
+(STOP-1s)
+World!
+Hello,
+```
+Builder ten jest przydatny jeśli chcemy świadomie zatrzymać wątek by program się nie skończył
+np w testach lub funkcji *main()*
+````kotlin
+fun main() = runBlocking {
+// ...
+}
+
+
+@Test
+fun `test`() = runBlocking {
+    
+}
+
+````
+
+** UWAGA! - builder ten jest rzadko używany, w testach stosuje się  *runTest* a main jest
+często suspendowalna**
+
+##Builder - async
+
+Jest to builder podobny do bildera *launch* , ale stosuje się go w sytuacji gdy produkowana
+jest wartość. Musi ona być zwracana przez lambdę. 
+Funkcja *async* zwraca obiekt typu *Deferred<T>*, gdzie *T* jest typem produkowanej wartości. 
+Typ ten posiada metodę *await()* zwracającą wartoś tylko wtedy gdy jest ona gotowa. 
+
+Tak samo jak w przypadku *launch* , metoda *async()* tworzy korutynę natychmiast po uruchomieniu. 
+W obiekcie *Deferred* uzyskujemy referencję do wyniku. 
+
+Jeśli metoda *await()* zostanie zawołana zanim wynik będzie gotowy to korutyna zostanie uśpiona.
+
+```
+Uwaga! Builder async doskonale nadaje się do zrównoleglania wywołań do zdalnych repozytoriów/usług.
+
+```
+
+```kotlin
+scope.launch {
+val news = async {
+newsRepo.getNews()
+.sortedByDescending { it.date }
+}
+val newsSummary = newsRepo.getNewsSummary()
+// we could wrap it with async as well,
+// but it would be redundant
+view.showNews(
+newsSummary,
+news.await()
+)
+}
+
+```
+
+
