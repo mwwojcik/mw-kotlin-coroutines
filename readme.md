@@ -387,6 +387,33 @@ println("Hello,")
 
 
 # Domyślny kontekst korutyny
+Każda metoda suspendowalna musi być wołana z wnętrza korutyny. Jeśli nie spełni się tego warunku zgłoszony zostanie 
+błąd kompilacji:
+
+![](assets/img/without_courutine_body.png)
+
+Aby naprawić tę sytuację należy skorzystać z funkcji *couroutineScope*, która dostarcza kontekstu korutyny. 
+
+Czeka ona w zawieszeniu aż zakończą się wszystkie korutyny wewnętrzne. Funkcja uruchamiana z kontekstem korutyny
+musi być funkcją suspendowalną.
+
+Przy pomocy tej konwencji możliwe jest również stworzenie suspendowalnej metody *main()*
+
+Poniższe konstrukcje są równoważne:
+
+
+```kotlin
+suspend fun main() = coroutineScope {}
+
+fun main()=runBlocking{}
+
+//TODO zastanowić się czy aby na pewno są równoważne
+```
+
+W większości przypadków funkcje suspendujęce wołają inne funkcje suspendujące. 
+
+W systuacji gdy chcemy wprowadzić zrównoleglenie, funkcja musi zostać opakowana przez *couroutineScope* i wewnątrz
+niego musi zostać użyty odpowiedni builder. 
 
 ```kotlin
 suspend fun main() = coroutineScope {
@@ -421,3 +448,5 @@ suspend fun generateSerialNumber(): String {
     return UUID.randomUUID().toString()
 }
 ```
+
+![](assets/img/different_courutine_objects.png)
