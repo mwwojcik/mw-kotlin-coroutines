@@ -364,3 +364,23 @@ W konsekwencji:
 
 * jeśli korutyna parent zostaje unieważniona (cancelled) jej korutyny potomne również zostają unieważnione
 * jeśli korutyna potomna rzuci błąd, unieważniana jest również korutyna rodzica
+
+```kotlin
+fun main() = runBlocking {
+this.launch { // same as just launch
+delay(1000L)
+println("World!")
+}
+launch { // same as this.launch
+delay(2000L)
+println("World!")
+}
+println("Hello,")
+}
+
+// Hello,
+// (1 sec)
+// World!
+// (1 sec)
+// World!
+```
