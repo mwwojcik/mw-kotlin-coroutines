@@ -287,5 +287,80 @@ news.await()
 }
 
 ```
+# Structured Concurrency
 
+Powróćmy chwilę do następującego przykładu:
 
+```kotlin
+fun main() {
+    GlobalScope.launch {
+        delay(1000L)
+        println("World!")
+    }
+    println("Hello,")
+    Thread.sleep(2000L)
+}
+```
+Builder *launch* uruchamiany jest na obiekcie *GlobalScope* - jest to obiekt rozszerzający
+*CoroutineScope*.
+
+```kotlin
+public object GlobalScope : CoroutineScope
+```
+
+W powyższym przykłdzie kod korutyny zostanie uruchomiony w oderwaniu od jakiegokolwiek przepływu
+a jego wynik będzie niezauważalny jeśli nie nastąpi sztuczne uśpienie wątku. 
+
+Przyjrzyjmy się chwilę definicji metod builderów
+
+```kotlin
+
+fun <T> runBlocking(
+context: CoroutineContext = EmptyCoroutineContext,
+block: suspend CoroutineScope.() -> T
+): T
+
+fun CoroutineScope.launch(
+context: CoroutineContext = EmptyCoroutineContext,
+start: CoroutineStart = CoroutineStart.DEFAULT,
+block: suspend CoroutineScope.() -> Unit
+): Job
+
+fun <T> CoroutineScope.async(
+context: CoroutineContext = EmptyCoroutineContext,
+start: CoroutineStart = CoroutineStart.DEFAULT,
+block: suspend CoroutineScope.() -> T
+): Deferred<T>
+```
+
+Zwróćmy uwagę na kilka szczegółów. 
+
+* *launch* i *async* są metodami rozszerzającymi interfejs *CoroutineScope*
+* *runBlocking* nie rozszerza interfejsu *CoroutineScope*
+* każdy z builderów w ostatnim parametrze o nazwie *block* przyjmuje funkcję której receiverem jest *CoroutineScope*
+
+```kotlin
+It is because
+launch and async are extension functions on the CoroutineScope.
+However, if you take a look at the definitions of these and of
+runBlocking, you will see that the block parameter is a function type
+whose receiver type is also CoroutineScope.
+```
+
+Mają one głębokie konsekwencje. Dzięki tym relacjomo możliwe jest budowanie relacji pomiędzy 
+korutynami. Ta hierchiczna relacja nazywana jest _**structured concurrency**_
+
+Korutyna zewnętrzna (parent) dostarcza kontekstu wywołania dla korutyn wewnętrznych. Tworzona
+jest zależność rodzic-dziecko. 
+Kontekst rodzica przejmuje odpowiedzialność za konteksty potomne. Znaczy to, że korutyna
+zewnętrzna musi zostać zasuspendowana dopóki nie skończy się przetwarzanie korutyn potomnych.
+
+Należy zwrócić uwagę że bilder runBlocking nie rozszerza *CoroutineScope* więc nie może być
+stosowany wewnątrz zagnieżdżonego scope. Może wystąpić tylko na górze hierarchii. 
+
+Metody *launch()* i *async()* mogą być stosowane w kontekście potomnym.
+
+W konsekwencji:
+
+* jeśli korutyna parent zostaje unieważniona (cancelled) jej korutyny potomne również zostają unieważnione
+* jeśli korutyna potomna rzuci błąd, unieważniana jest również korutyna rodzica
