@@ -450,3 +450,73 @@ suspend fun generateSerialNumber(): String {
 ```
 
 ![](assets/img/different_courutine_objects.png)
+
+# Współdzielenie kontekstu korutyn
+W celu przekazywania informacji pomiędzy korutynami można użyć obiektu *CoroutineContext*.
+
+W coroutine scope jest on dostępny przez odwołanie do kolekcji *coroutineContext*
+
+Kontekst korutyn może być współdzielony w hierarchii rodzic dziecko. Jest on przekazywany  do korutyn potomnych.
+
+```kotlin
+fun main() = runBlocking(CoroutineName("main")) {
+    val startCorName=coroutineContext[CoroutineName]?.name
+    println("$startCorName => Started") // [main] Started
+    val v1 = async {
+        delay(500)
+        val corName=coroutineContext[CoroutineName]?.name
+        println("$corName => Running async") // [main] Running async
+        42
+    }
+    launch {
+        delay(1000)
+        val corName=coroutineContext[CoroutineName]?.name
+        println("$corName => Running launch") // [main] Running launch
+    }
+    val corName=coroutineContext[CoroutineName]?.name
+    println("$corName => The answer is ${v1.await()}")
+// [main] The answer is 42
+}
+
+```
+```kotlin
+main => Started
+main => Running async
+main => The answer is 42
+main => Running launch
+```
+W tym przypadku kontekst założony w korutynie nadrzędnej ma przypisaną swoją nazwę "main" .
+
+Jest on dostępny w każdej z korutyn potomnych. 
+
+Jeśli chcemy by któraś z korutyn wykonana została w swoim własnym scope, niektóre z własności obiektu  kontekstu 
+mogą zostać nadpisane:
+
+```kotlin
+fun main() = runBlocking(CoroutineName("main")) {
+    val startCorName=coroutineContext[CoroutineName]?.name
+    println("$startCorName => Started") // [main] Started
+    val v1 = async(CoroutineName("Async SCOPE")) {
+        delay(500)
+        val corName=coroutineContext[CoroutineName]?.name
+        println("$corName => Running async") // [main] Running async
+        42
+    }
+    launch {
+        delay(1000)
+        val corName=coroutineContext[CoroutineName]?.name
+        println("$corName => Running launch") // [main] Running launch
+    }
+    val corName=coroutineContext[CoroutineName]?.name
+    println("$corName => The answer is ${v1.await()}")
+// [main] The answer is 42
+}
+```
+
+```kotlin
+main => Started
+Async SCOPE => Running async
+main => The answer is 42
+main => Running launch
+```
+

@@ -5,7 +5,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import java.util.*
 
-suspend fun main() = coroutineScope {
+suspend fun mainScope() = coroutineScope {
     //metoda niesuspendowalna woła suspendowalną dlatego musi być w scope coroutineScope
     //lub builder runBlocking
     for (i in 1..3) {
