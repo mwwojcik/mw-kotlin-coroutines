@@ -490,7 +490,9 @@ W tym przypadku kontekst założony w korutynie nadrzędnej ma przypisaną swoj�
 Jest on dostępny w każdej z korutyn potomnych. 
 
 Jeśli chcemy by któraś z korutyn wykonana została w swoim własnym scope, niektóre z własności obiektu  kontekstu 
-mogą zostać nadpisane:
+mogą zostać nadpisane.
+
+Dostęp do kontekstu korutyny jest możliwy za pośrednictwem zmiennej *coroutineContext[CoroutineName]?.name*.
 
 ```kotlin
 fun main() = runBlocking(CoroutineName("main")) {
@@ -519,4 +521,5 @@ Async SCOPE => Running async
 main => The answer is 42
 main => Running launch
 ```
-
+# Dispatchers
+![](assets/img/dispatchers.png)
